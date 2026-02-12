@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test:*)",
+      "WebSearch",
+      "Bash(source:*)",
+      "Bash(nvm use:*)",
+      "Bash(npm install:*)",
+      "Bash(chmod:*)"
+    ]
+  }
+}

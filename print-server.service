@@ -1,0 +1,16 @@
+[Unit]
+Description=Thermal Print Server
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/thermal-printer
+ExecStart=/home/pi/.nvm/versions/node/v24.13.1/bin/node --experimental-strip-types src/index.ts
+Restart=always
+RestartSec=3
+Environment=NODE_ENV=production
+Environment=PORT=3000
+
+[Install]
+WantedBy=multi-user.target
