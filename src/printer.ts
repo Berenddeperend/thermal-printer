@@ -3,7 +3,7 @@ import { config } from './config.ts';
 
 export type Printer = {
   isConnected: () => Promise<boolean>;
-  execute: (fn: (p: ThermalPrinter) => void) => Promise<void>;
+  execute: (fn: (p: ThermalPrinter) => void | Promise<void>) => Promise<void>;
 };
 
 function createRealPrinter(): Printer {
@@ -16,7 +16,7 @@ function createRealPrinter(): Printer {
     isConnected: () => p.isPrinterConnected(),
     execute: async (fn) => {
       p.clear();
-      fn(p);
+      await fn(p);
       await p.execute();
     },
   };
@@ -35,6 +35,7 @@ function createMockPrinter(): Printer {
     drawLine: () => log('drawLine'),
     newLine: () => log('newLine'),
     cut: () => log('cut'),
+    printImage: async (path: string) => log('printImage:', path),
     setTextSize: (w: number, h: number) => log('setTextSize:', w, h),
     tableCustom: (rows: unknown[]) => log('tableCustom:', JSON.stringify(rows)),
     clear: () => log('clear'),
@@ -46,7 +47,7 @@ function createMockPrinter(): Printer {
     isConnected: async () => true,
     execute: async (fn) => {
       log('--- job start ---');
-      fn(mock);
+      await fn(mock);
       log('--- job end ---');
     },
   };
