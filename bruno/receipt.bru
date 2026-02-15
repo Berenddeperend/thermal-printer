@@ -1,0 +1,23 @@
+meta {
+  name: receipt
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/printer/receipt
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "items": [
+      {
+        "name": "Espresso",
+        "price": 3.50
+      }
+    ],
+    "total": 3.50
+  }
+}

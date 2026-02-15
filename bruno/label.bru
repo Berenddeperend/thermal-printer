@@ -1,0 +1,17 @@
+meta {
+  name: label
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/printer/label
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "text": "Hello from Bruno"
+  }
+}

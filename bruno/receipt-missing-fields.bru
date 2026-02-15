@@ -1,0 +1,15 @@
+meta {
+  name: receipt-missing-fields
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/printer/receipt
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}

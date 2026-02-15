@@ -13,7 +13,7 @@ berendswennenhuis.nl/api/printer/*
     │
 [RPi4 server] ── Caddy reverse proxy ──→ [Printer Pi (RPi2) on LAN]
                                               │
-                                         print-server (Node + tsx)
+                                         print-server (Node + --experimental-strip-types)
                                               │
                                          queue → node-thermal-printer → USB
                                                  RPi Camera Module → CSI
@@ -32,7 +32,7 @@ berendswennenhuis.nl/api/printer/*
 
 ## Stack
 
-- **Runtime**: Node.js 24 LTS with tsx (TypeScript, no build step). Run 'nvm use' before running any node commands.
+- **Runtime**: Node.js 22 LTS with `--experimental-strip-types` (TypeScript, no build step). Run 'nvm use' before running any node commands.
 - **Printer lib**: node-thermal-printer (PrinterTypes.STAR)
 - **Printer interface**: /dev/usb/lp0 (USB)
 - **Camera**: RPi Camera Module (v2 or v3) via CSI port, controlled via libcamera
@@ -68,7 +68,7 @@ These are examples. Routes are added as needed.
 - `sudo apt-get install build-essential` required for node-thermal-printer native deps
 - `sudo usermod -a -G lp $USER` for USB printer access
 - Verify printer: `lsusb` (Star Micronics), `ls /dev/usb/lp0`
-- Install Node.js 24 via NodeSource (armv7 builds available)
+- Install Node.js 22 via NodeSource (armv7 builds available)
 
 ---
 

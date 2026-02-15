@@ -6,7 +6,8 @@
       "Bash(source:*)",
       "Bash(nvm use:*)",
       "Bash(npm install:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(ssh:*)"
     ]
   }
 }
