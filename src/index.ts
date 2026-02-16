@@ -6,6 +6,7 @@ import { createRouter } from './router.ts';
 import { healthRoute } from './routes/health.ts';
 import { labelRoute } from './routes/label.ts';
 import { receiptRoute } from './routes/receipt.ts';
+import { imageRoute } from './routes/image.ts';
 
 const printer = createPrinter();
 const queue = new PrintQueue();
@@ -14,6 +15,7 @@ const handler = createRouter([
   healthRoute(printer, queue),
   labelRoute(printer, queue),
   receiptRoute(printer, queue),
+  imageRoute(printer, queue),
 ]);
 
 const server = createServer(handler);

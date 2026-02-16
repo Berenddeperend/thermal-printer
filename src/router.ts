@@ -10,6 +10,7 @@ export type Route = {
   method: string;
   path: string;
   handler: RouteHandler;
+  raw?: boolean;
 };
 
 function json(res: ServerResponse, status: number, data: unknown): void {
@@ -31,6 +32,23 @@ async function parseBody(req: IncomingMessage): Promise<unknown> {
   return JSON.parse(raw);
 }
 
+const MAX_RAW_BODY = 5 * 1024 * 1024; // 5MB
+
+async function parseRawBody(req: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length;
+    if (size > MAX_RAW_BODY) {
+      const err = new Error('Payload too large') as Error & { statusCode: number };
+      err.statusCode = 413;
+      throw err;
+    }
+    chunks.push(chunk as Buffer);
+  }
+  return Buffer.concat(chunks);
+}
+
 export function createRouter(routes: Route[]): (req: IncomingMessage, res: ServerResponse) => void {
   return async (req, res) => {
     const method = req.method || 'GET';
@@ -44,9 +62,18 @@ export function createRouter(routes: Route[]): (req: IncomingMessage, res: Serve
     }
 
     try {
-      const body = method === 'GET' ? undefined : await parseBody(req);
+      const body = method === 'GET'
+        ? undefined
+        : route.raw
+          ? await parseRawBody(req)
+          : await parseBody(req);
       await route.handler(req, res, body);
     } catch (err) {
+      const statusCode = (err as { statusCode?: number }).statusCode;
+      if (statusCode === 413) {
+        json(res, 413, { error: 'Payload too large' });
+        return;
+      }
       console.error('Route error:', err);
       json(res, 500, { error: 'Internal server error' });
     }
