@@ -2,6 +2,8 @@
 
 HTTP print server for a Star TSP143IIU+ thermal printer, running on a Raspberry Pi.
 
+![printer spitting out pip.png](./pip-demo.gif)
+
 ## Prerequisites
 
 - A Raspberry Pi with the Star TSP143IIU+ connected via USB
