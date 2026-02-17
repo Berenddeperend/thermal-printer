@@ -4,6 +4,15 @@ HTTP print server for a Star TSP143IIU+ thermal printer, running on a Raspberry 
 
 ![printer spitting out pip.png](./pip-demo.gif)
 
+## Goal
+
+Inspired by https://guestbook.goodenough.us/info and https://ntfy.sh/. I wanted something similar for myself. 
+I tried to use https://www.npmjs.com/package/node-thermal-printer but my printer was not supported. So I re-implemented this solution in node.js: https://github.com/geftactics/python-StarTSPImage/tree/main
+
+## Disclosure
+
+Mostly vibe coded.
+
 ## Prerequisites
 
 - A Raspberry Pi with the Star TSP143IIU+ connected via USB
