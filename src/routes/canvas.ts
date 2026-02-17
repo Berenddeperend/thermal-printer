@@ -42,8 +42,9 @@ export function canvasRoute(printer: Printer, queue: PrintQueue): Route {
         return;
       }
 
+      const dither = getQueryParam(req, 'dither') === 'true';
       const rgba = new Uint8Array(body);
-      const mono = rgbaToMono(rgba, width, height);
+      const mono = rgbaToMono(rgba, width, height, { dither });
 
       await queue.enqueue(() => printer.sendBitmap(mono.data, mono.height));
 

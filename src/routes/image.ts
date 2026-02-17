@@ -1,4 +1,5 @@
 import { PNG } from 'pngjs';
+import type { IncomingMessage } from 'node:http';
 import type { Route } from '../router.ts';
 import { json } from '../router.ts';
 import type { Printer } from '../printer.ts';
@@ -23,12 +24,18 @@ export function imageRoute(printer: Printer, queue: PrintQueue): Route {
         return;
       }
 
+      const dither = getDither(req);
       const rgba = new Uint8Array(png.data);
-      const { data, height } = rgbaToMono(rgba, png.width, png.height);
+      const { data, height } = rgbaToMono(rgba, png.width, png.height, { dither });
 
       await queue.enqueue(() => printer.sendBitmap(data, height));
 
       json(res, 200, { ok: true });
     },
   };
+}
+
+function getDither(req: IncomingMessage): boolean {
+  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+  return url.searchParams.get('dither') === 'true';
 }
