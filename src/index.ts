@@ -8,6 +8,7 @@ import { labelRoute } from './routes/label.ts';
 import { receiptRoute } from './routes/receipt.ts';
 import { imageRoute } from './routes/image.ts';
 import { canvasRoute } from './routes/canvas.ts';
+import { testRoute } from './routes/test.ts';
 
 const printer = createPrinter();
 const queue = new PrintQueue();
@@ -18,6 +19,7 @@ const handler = createRouter([
   receiptRoute(printer, queue),
   imageRoute(printer, queue),
   canvasRoute(printer, queue),
+  testRoute(printer, queue),
 ]);
 
 const server = createServer(handler);

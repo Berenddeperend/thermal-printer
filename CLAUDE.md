@@ -33,7 +33,7 @@ berendswennenhuis.nl/api/printer/*
 ## Stack
 
 - **Runtime**: Node.js 22 LTS with `--experimental-strip-types` (TypeScript, no build step). Run 'nvm use' before running any node commands.
-- **Printer pipeline**: Pure JS, zero runtime deps. Text → `ReceiptBuilder` (bitmap font) → `encode()` (Star Graphic Mode raster) → `lp -d Star_TSP143 -o raw` (CUPS)
+- **Printer pipeline**: Pure JS, one runtime dep (`pngjs`). Text/images → 1-bit bitmap → `encode()` (Star Graphic Mode raster) → `lp -d Star_TSP143 -o raw` (CUPS)
 - **Why not node-thermal-printer**: The TSP143IIU+ only supports Star Graphic Mode (raster). Star Line Mode commands (which node-thermal-printer emits) are silently ignored. The CUPS raster pipeline works but takes ~40s. Star Graphic Mode via raw `lp` prints instantly.
 - **Printer interface**: CUPS (`lp -d Star_TSP143 -o raw`) — the `usblp` kernel module is blacklisted; CUPS uses libusb directly via the Star CUPS driver
 - **Camera**: RPi Camera Module (v2 or v3) via CSI port, controlled via libcamera
@@ -47,18 +47,35 @@ berendswennenhuis.nl/api/printer/*
 
 ## Print Pipeline
 
+Two paths into the printer, both ending at the same raster encoder:
+
 ```
-ReceiptBuilder (src/bitmap-font.ts)     — text/bold/table/line → 576px-wide 1-bit bitmap
-    ↓
-encode() (src/star-raster.ts)           — bitmap → Star Graphic Mode binary
-    ↓
-lp -d Star_TSP143 -o raw               — binary → CUPS → USB → printer
+Text path:    ReceiptBuilder (src/bitmap-font.ts)   → 576px 1-bit bitmap
+Image path:   rgbaToMono (src/image.ts)             → 576px 1-bit bitmap
+                          ↓
+                 encode() (src/star-raster.ts)       → Star Graphic Mode binary
+                          ↓
+                 lp -d Star_TSP143 -o raw            → CUPS → USB → printer
 ```
 
 - **Bitmap font**: Embedded 8x16 CP437 font (4096 bytes). 72 chars/line at 1x, 36 chars/line at 2x.
 - **Star Graphic Mode protocol**: `ESC * r A` (enter raster) → scanlines → `ESC * r B` (exit) → `ESC d 3` (cut).
 - **ReceiptBuilder API**: `.text()`, `.bold()`, `.textLarge()`, `.boldLarge()`, `.line()`, `.table()`, `.feed()`, `.build()`
-- Routes call `printer.execute((b) => { b.text('...'); })` — the builder callback renders to bitmap, encodes, and sends.
+- **Image conversion** (`src/image.ts`): `rgbaToMono()` scales RGBA to 576px wide (nearest-neighbor), converts to grayscale, thresholds at 128, packs to 1-bit.
+- **Text routes** call `printer.execute((b) => { b.text('...'); })` — builder callback renders to bitmap, encodes, and sends.
+- **Image routes** call `printer.sendBitmap(data, height)` — sends pre-built 1-bit bitmap directly to the encoder.
+- **Known quirk**: w/x/y/z sit 1px lower than other lowercase letters. This is in the font data, not a rendering bug.
+
+### Swapping the Bitmap Font
+
+The font lives in `src/bitmap-font.ts` as a hex string in the `FONT` constant. It's 4096 bytes: 256 characters, 16 bytes each (one byte per pixel row, 8 pixels wide).
+
+To swap it for a different 8x16 bitmap font:
+
+1. Download a `.fnt` or `.bin` file (good source: int10h.org oldschool-pc-fonts)
+2. Convert to hex: `xxd -p font.bin | tr -d '\n'`
+3. Paste the output into the `FONT` constant, replacing the existing hex string
+4. No other code changes needed
 
 ## Dev/Deploy
 
@@ -69,13 +86,24 @@ lp -d Star_TSP143 -o raw               — binary → CUPS → USB → printer
 - systemd unit file manages the process (auto-start on boot, restart on crash)
 - No Docker — overkill for a single-purpose Pi2 project
 
-## Endpoints Pattern
+## Endpoints
 
-- `POST /api/printer/receipt` — structured payload like `{ items, total }`
-- `POST /api/printer/label` — simple payload like `{ text }`
+- `POST /api/printer/receipt` — JSON `{ items, total }`
+- `POST /api/printer/label` — JSON `{ text }`
+- `POST /api/printer/image` — raw PNG bytes (`Content-Type: image/png`)
+- `POST /api/printer/canvas` — raw RGBA bytes (`Content-Type: application/octet-stream`, `?width=N&height=N`)
+- `POST /api/printer/test` — no body, prints a sampler of all text styles
 - `GET /api/printer/health` — printer connection status + queue depth
 
-These are examples. Routes are added as needed.
+The router returns parsed JSON for `application/json` requests, raw `Buffer` for everything else. Routes type-check what they receive.
+
+### Testing
+
+- JSON endpoints (receipt, label): use Bruno (`bruno/`)
+- Binary endpoints (image, canvas): use curl scripts (`scripts/`)
+  - `./scripts/test-image.sh <file.png> [base_url]`
+  - `./scripts/test-canvas.sh <file.rgba> <width> <height> [base_url]`
+  - Default base URL: `http://192.168.2.16:3000`
 
 ## Printer Pi Setup Notes
 
