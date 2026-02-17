@@ -60,7 +60,7 @@ Image path:   rgbaToMono (src/image.ts)             → 576px 1-bit bitmap
 
 - **Bitmap font**: Embedded 8x16 CP437 font (4096 bytes). 72 chars/line at 1x, 36 chars/line at 2x.
 - **Star Graphic Mode protocol**: `ESC * r A` (enter raster) → scanlines → `ESC * r B` (exit) → `ESC d 3` (cut).
-- **ReceiptBuilder API**: `.text()`, `.bold()`, `.textLarge()`, `.boldLarge()`, `.line()`, `.table()`, `.feed()`, `.build()`
+- **ReceiptBuilder API**: `.textSmall()` / `.boldSmall()` (1x, 72 chars), `.text()` / `.bold()` (2x, 36 chars), `.textLarge()` / `.boldLarge()` (3x, 24 chars), `.line()`, `.table()`, `.feed()`, `.build()`
 - **Image conversion** (`src/image.ts`): `rgbaToMono()` scales RGBA to 576px wide (nearest-neighbor), converts to grayscale, thresholds at 128, packs to 1-bit.
 - **Text routes** call `printer.execute((b) => { b.text('...'); })` — builder callback renders to bitmap, encodes, and sends.
 - **Image routes** call `printer.sendBitmap(data, height)` — sends pre-built 1-bit bitmap directly to the encoder.

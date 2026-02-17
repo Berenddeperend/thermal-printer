@@ -34,23 +34,23 @@ export class ReceiptBuilder {
   private rows: Uint8Array[] = [];
 
   /** Render a line of text at 1x size (8x16, 72 chars/line) */
-  text(str: string, align: Align = 'left'): this {
+  textSmall(str: string, align: Align = 'left'): this {
     for (const line of this.wrap(str, CHARS_PER_LINE)) {
-      this.rows.push(this.renderLine(this.pad(line, CHARS_PER_LINE, align), false));
+      this.rows.push(this.renderLine1x(this.pad(line, CHARS_PER_LINE, align), false));
     }
     return this;
   }
 
   /** Render a line of bold text at 1x size */
-  bold(str: string, align: Align = 'left'): this {
+  boldSmall(str: string, align: Align = 'left'): this {
     for (const line of this.wrap(str, CHARS_PER_LINE)) {
-      this.rows.push(this.renderLine(this.pad(line, CHARS_PER_LINE, align), true));
+      this.rows.push(this.renderLine1x(this.pad(line, CHARS_PER_LINE, align), true));
     }
     return this;
   }
 
   /** Render a line of text at 2x size (16x32, 36 chars/line) */
-  textLarge(str: string, align: Align = 'left'): this {
+  text(str: string, align: Align = 'left'): this {
     const maxChars = CHARS_PER_LINE / 2; // 36
     for (const line of this.wrap(str, maxChars)) {
       this.rows.push(this.renderLine2x(this.pad(line, maxChars, align), false));
@@ -59,10 +59,28 @@ export class ReceiptBuilder {
   }
 
   /** Render a line of bold text at 2x size */
-  boldLarge(str: string, align: Align = 'left'): this {
+  bold(str: string, align: Align = 'left'): this {
     const maxChars = CHARS_PER_LINE / 2;
     for (const line of this.wrap(str, maxChars)) {
       this.rows.push(this.renderLine2x(this.pad(line, maxChars, align), true));
+    }
+    return this;
+  }
+
+  /** Render a line of text at 3x size (24x48, 24 chars/line) */
+  textLarge(str: string, align: Align = 'left'): this {
+    const maxChars = CHARS_PER_LINE / 3; // 24
+    for (const line of this.wrap(str, maxChars)) {
+      this.rows.push(this.renderLine3x(this.pad(line, maxChars, align), false));
+    }
+    return this;
+  }
+
+  /** Render a line of bold text at 3x size */
+  boldLarge(str: string, align: Align = 'left'): this {
+    const maxChars = CHARS_PER_LINE / 3; // 24
+    for (const line of this.wrap(str, maxChars)) {
+      this.rows.push(this.renderLine3x(this.pad(line, maxChars, align), true));
     }
     return this;
   }
@@ -75,24 +93,24 @@ export class ReceiptBuilder {
     return this;
   }
 
-  /** Render a table row with column layout */
+  /** Render a table row with column layout (2x size, 36 chars) */
   table(columns: Column[]): this {
-    const line = new Uint8Array(CHARS_PER_LINE);
+    const charsPerLine = CHARS_PER_LINE / 2; // 36
+    const line = new Uint8Array(charsPerLine);
     let pos = 0;
     for (const col of columns) {
-      const colChars = Math.max(1, Math.round(col.width * CHARS_PER_LINE));
+      const colChars = Math.max(1, Math.round(col.width * charsPerLine));
       const padded = this.pad(col.text.slice(0, colChars), colChars, col.align || 'left');
-      for (let i = 0; i < colChars && pos < CHARS_PER_LINE; i++, pos++) {
+      for (let i = 0; i < colChars && pos < charsPerLine; i++, pos++) {
         line[pos] = padded.charCodeAt(i);
       }
     }
     // Fill remainder with spaces
-    while (pos < CHARS_PER_LINE) line[pos++] = 0x20;
+    while (pos < charsPerLine) line[pos++] = 0x20;
 
     const str = String.fromCharCode(...line);
-    // Check if any column wants bold
     const isBold = columns.some((c) => c.bold);
-    this.rows.push(this.renderLine(str, isBold));
+    this.rows.push(this.renderLine2x(str, isBold));
     return this;
   }
 
@@ -120,7 +138,7 @@ export class ReceiptBuilder {
   // -- private helpers --
 
   /** Render a string of exactly `CHARS_PER_LINE` characters to a bitmap (1x size) */
-  private renderLine(str: string, bold: boolean): Uint8Array {
+  private renderLine1x(str: string, bold: boolean): Uint8Array {
     const buf = new Uint8Array(WIDTH_BYTES * CHAR_H);
     for (let row = 0; row < CHAR_H; row++) {
       for (let col = 0; col < CHARS_PER_LINE; col++) {
@@ -161,6 +179,40 @@ export class ReceiptBuilder {
         buf[r1 * WIDTH_BYTES + baseCol + 1] = lo;
         buf[r2 * WIDTH_BYTES + baseCol] = hi;
         buf[r2 * WIDTH_BYTES + baseCol + 1] = lo;
+      }
+    }
+    return buf;
+  }
+
+  /** Render a string at 3x size (24x48 per char) */
+  private renderLine3x(str: string, bold: boolean): Uint8Array {
+    const charsPerLine = CHARS_PER_LINE / 3; // 24
+    const charH3 = CHAR_H * 3; // 48
+    const buf = new Uint8Array(WIDTH_BYTES * charH3);
+    for (let row = 0; row < CHAR_H; row++) {
+      for (let col = 0; col < charsPerLine; col++) {
+        const ch = str.charCodeAt(col) & 0xff;
+        let byte = FONT[ch * 16 + row];
+        if (bold) byte |= (byte >> 1);
+        // Expand 8 bits to 24 bits (each bit tripled horizontally)
+        let wide = 0;
+        for (let b = 7; b >= 0; b--) {
+          if (byte & (1 << b)) {
+            wide |= (7 << (b * 3)); // three bits for each source bit
+          }
+        }
+        // 24 bits = 3 bytes per char
+        const b0 = (wide >> 16) & 0xff;
+        const b1 = (wide >> 8) & 0xff;
+        const b2 = wide & 0xff;
+        const baseCol = col * 3;
+        // Write to three rows (triple vertically)
+        for (let ry = 0; ry < 3; ry++) {
+          const destRow = row * 3 + ry;
+          buf[destRow * WIDTH_BYTES + baseCol] = b0;
+          buf[destRow * WIDTH_BYTES + baseCol + 1] = b1;
+          buf[destRow * WIDTH_BYTES + baseCol + 2] = b2;
+        }
       }
     }
     return buf;

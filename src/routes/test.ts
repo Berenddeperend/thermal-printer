@@ -14,6 +14,16 @@ export function testRoute(printer: Printer, queue: PrintQueue): Route {
           b.line();
           b.feed(1);
 
+          b.textSmall('textSmall() left aligned');
+          b.textSmall('textSmall() center', 'center');
+          b.textSmall('textSmall() right', 'right');
+          b.feed(1);
+
+          b.boldSmall('boldSmall() left aligned');
+          b.boldSmall('boldSmall() center', 'center');
+          b.boldSmall('boldSmall() right', 'right');
+          b.feed(1);
+
           b.text('text() left aligned');
           b.text('text() center aligned', 'center');
           b.text('text() right aligned', 'right');
@@ -55,10 +65,10 @@ export function testRoute(printer: Printer, queue: PrintQueue): Route {
           b.line();
           b.bold('WORD WRAP', 'center');
           b.line();
-          b.text('This is a long line of text that should automatically wrap to the next line when it exceeds the maximum character width of the printer.');
+          b.text('This is a long line of text that should wrap to the next line when it exceeds the max width.');
           b.feed(1);
 
-          b.boldLarge('Large text also wraps nicely across lines');
+          b.boldLarge('Large wrap test');
           b.feed(2);
         }),
       );
