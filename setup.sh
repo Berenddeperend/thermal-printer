@@ -34,7 +34,7 @@ if [[ ! -d "$HOME/.nvm" ]]; then
 fi
 REMOTE
 
-# Phase 2: Push repo from Mac to Pi (Pi has no internet)
+# Phase 2: Push repo from Mac to Pi
 echo "==> Syncing repo to Pi..."
 rsync -az --exclude node_modules --exclude .env "$SCRIPT_DIR/" "$PRINTER_PI:~/thermal-printer/"
 
@@ -56,14 +56,17 @@ echo "==> Installing npm dependencies..."
 npm install
 
 echo "==> Building and installing Star CUPS driver..."
-if [[ -d drivers/starcupsdrv ]]; then
-  cd drivers/starcupsdrv
-  sudo make
+if ! ls /usr/lib/cups/filter/rastertostar &>/dev/null; then
+  DRIVER_DIR=$(mktemp -d)
+  tar xzf Star_CUPS_Driver-3.17.0_linux.tar.gz -C "$DRIVER_DIR"
+  tar xzf "$DRIVER_DIR/Star_CUPS_Driver-3.17.0_linux/SourceCode/Star_CUPS_Driver-src-3.17.0.tar.gz" -C "$DRIVER_DIR"
+  cd "$DRIVER_DIR/Star_CUPS_Driver-src-3.17.0"
+  make
   sudo make install
   cd "$HOME/thermal-printer"
+  rm -rf "$DRIVER_DIR"
 else
-  echo "WARNING: drivers/starcupsdrv not found, skipping driver install."
-  echo "Download the Star CUPS driver source and place it in drivers/starcupsdrv/"
+  echo "Star CUPS driver already installed, skipping."
 fi
 
 echo "==> Registering printer in CUPS..."

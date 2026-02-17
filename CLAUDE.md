@@ -26,8 +26,8 @@ berendswennenhuis.nl/api/printer/*
 
 ### Networking
 
-- The printer Pi is NOT connected to the internet, only to the local LAN.
-- The RPi4 server runs Caddy and reverse proxies `berendswennenhuis.nl/api/printer/*` to the printer Pi's local IP (e.g. `192.168.1.X:3000`).
+- The printer Pi is on the local LAN and has internet access.
+- The RPi4 server runs Caddy and reverse proxies `berendswennenhuis.nl/api/printer/*` to the printer Pi's local IP (e.g. `192.168.2.16:3000`).
 - Caddy on the RPi4 server handles TLS termination. The printer Pi only receives plain HTTP from the LAN.
 
 ## Stack
@@ -110,7 +110,7 @@ The router returns parsed JSON for `application/json` requests, raw `Buffer` for
 - `sudo apt-get install cups libcups2-dev libusb-1.0-0-dev` for CUPS
 - `sudo usermod -aG lp,lpadmin $USER` for printer + CUPS admin access
 - Blacklist `usblp` kernel module: `echo "blacklist usblp" | sudo tee /etc/modprobe.d/blacklist-usblp.conf`
-- Star CUPS driver: build from source in `drivers/starcupsdrv/` (`sudo make && sudo make install`)
+- Star CUPS driver: bundled as `Star_CUPS_Driver-3.17.0_linux.tar.gz` in repo root (official Star tarball, hidden behind a form on their site). `setup.sh` handles extraction and build.
 - Register printer: `sudo lpadmin -p Star_TSP143 -E -v "usb://Star/Star%20TSP143IIU%2B" -m star/tsp143.ppd`
 - Verify: `lpstat -p Star_TSP143` (should show idle), `echo test | lp -d Star_TSP143 -o raw`
 - Verify USB: `lsusb` (Star Micronics)

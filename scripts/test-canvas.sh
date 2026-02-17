@@ -4,10 +4,13 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+[[ -f "$SCRIPT_DIR/../.env" ]] && source "$SCRIPT_DIR/../.env"
+
 FILE="${1:?Usage: $0 <file.rgba> <width> <height> [base_url]}"
 WIDTH="${2:?Usage: $0 <file.rgba> <width> <height> [base_url]}"
 HEIGHT="${3:?Usage: $0 <file.rgba> <width> <height> [base_url]}"
-BASE_URL="${4:-http://192.168.2.16:3000}"
+BASE_URL="${4:-http://${PRINTER_PI#*@}:3000}"
 
 curl -X POST "$BASE_URL/api/printer/canvas?width=$WIDTH&height=$HEIGHT" \
   -H 'Content-Type: application/octet-stream' \
