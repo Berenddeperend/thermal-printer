@@ -26,9 +26,14 @@ async function parseBody(req: IncomingMessage): Promise<unknown> {
   for await (const chunk of req) {
     chunks.push(chunk as Buffer);
   }
-  const raw = Buffer.concat(chunks).toString();
-  if (!raw) return undefined;
-  return JSON.parse(raw);
+  const raw = Buffer.concat(chunks);
+  if (!raw.length) return undefined;
+
+  const contentType = req.headers['content-type'] || '';
+  if (contentType.startsWith('application/json')) {
+    return JSON.parse(raw.toString());
+  }
+  return raw;
 }
 
 export function createRouter(routes: Route[]): (req: IncomingMessage, res: ServerResponse) => void {

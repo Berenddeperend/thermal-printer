@@ -1,23 +1,57 @@
-import { printer as ThermalPrinter, types as PrinterTypes } from 'node-thermal-printer';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { ReceiptBuilder } from './bitmap-font.ts';
+import { encode } from './star-raster.ts';
 import { config } from './config.ts';
+
+const execFileAsync = promisify(execFile);
+
+const WIDTH_BYTES = 72;
 
 export type Printer = {
   isConnected: () => Promise<boolean>;
-  execute: (fn: (p: ThermalPrinter) => void) => Promise<void>;
+  execute: (fn: (b: ReceiptBuilder) => void) => Promise<void>;
+  sendBitmap: (data: Uint8Array, height: number) => Promise<void>;
 };
 
+function createCupsInterface(cupsName: string) {
+  return {
+    async isPrinterConnected(): Promise<boolean> {
+      try {
+        const { stdout } = await execFileAsync('lpstat', ['-p', cupsName]);
+        return /idle|printing/.test(stdout);
+      } catch {
+        return false;
+      }
+    },
+
+    async sendRaw(buffer: Buffer): Promise<void> {
+      return new Promise((resolve, reject) => {
+        const lp = execFile('lp', ['-d', cupsName, '-o', 'raw', '-'], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+        lp.stdin!.end(buffer);
+      });
+    },
+  };
+}
+
 function createRealPrinter(): Printer {
-  const p = new ThermalPrinter({
-    type: PrinterTypes.STAR,
-    interface: config.printerInterface,
-  });
+  const cups = createCupsInterface(config.cupsName);
 
   return {
-    isConnected: () => p.isPrinterConnected(),
+    isConnected: () => cups.isPrinterConnected(),
     execute: async (fn) => {
-      p.clear();
-      fn(p);
-      await p.execute();
+      const builder = new ReceiptBuilder();
+      fn(builder);
+      const { data, height } = builder.build();
+      const raster = encode(data, WIDTH_BYTES, height);
+      await cups.sendRaw(raster);
+    },
+    sendBitmap: async (data, height) => {
+      const raster = encode(data, WIDTH_BYTES, height);
+      await cups.sendRaw(raster);
     },
   };
 }
@@ -25,29 +59,20 @@ function createRealPrinter(): Printer {
 function createMockPrinter(): Printer {
   const log = (...args: unknown[]) => console.log('[mock-printer]', ...args);
 
-  const mock = {
-    text: (t: string) => log('text:', t),
-    println: (t: string) => log('println:', t),
-    bold: (on: boolean) => log('bold:', on),
-    alignCenter: () => log('alignCenter'),
-    alignLeft: () => log('alignLeft'),
-    alignRight: () => log('alignRight'),
-    drawLine: () => log('drawLine'),
-    newLine: () => log('newLine'),
-    cut: () => log('cut'),
-    setTextSize: (w: number, h: number) => log('setTextSize:', w, h),
-    tableCustom: (rows: unknown[]) => log('tableCustom:', JSON.stringify(rows)),
-    clear: () => log('clear'),
-    execute: async () => log('execute'),
-    isPrinterConnected: async () => true,
-  } as unknown as ThermalPrinter;
-
   return {
     isConnected: async () => true,
     execute: async (fn) => {
       log('--- job start ---');
-      fn(mock);
+      const builder = new ReceiptBuilder();
+      fn(builder);
+      const { width, height } = builder.build();
+      log(`rendered ${width}x${height} bitmap`);
       log('--- job end ---');
+    },
+    sendBitmap: async (data, height) => {
+      log('--- bitmap job start ---');
+      log(`sendBitmap ${data.length} bytes, 576x${height}`);
+      log('--- bitmap job end ---');
     },
   };
 }

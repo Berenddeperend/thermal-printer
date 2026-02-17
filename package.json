@@ -8,10 +8,11 @@
     "dev": "node --experimental-strip-types --watch src/index.ts"
   },
   "dependencies": {
-    "node-thermal-printer": "^4.4.3"
+    "pngjs": "^7.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/pngjs": "^6.0.5",
     "typescript": "^5.8.0"
   }
 }

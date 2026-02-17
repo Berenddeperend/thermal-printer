@@ -1,6 +1,6 @@
 [Unit]
 Description=Thermal Print Server
-After=network.target
+After=network.target cups.service
 
 [Service]
 Type=simple

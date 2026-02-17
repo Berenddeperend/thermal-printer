@@ -25,22 +25,21 @@ export function receiptRoute(printer: Printer, queue: PrintQueue): Route {
       }
 
       await queue.enqueue(() =>
-        printer.execute((p) => {
-          p.drawLine();
+        printer.execute((b) => {
+          b.line();
           for (const item of items) {
-            p.tableCustom([
-              { text: item.name, align: 'LEFT', width: 0.7 },
-              { text: item.price.toFixed(2), align: 'RIGHT', width: 0.3 },
+            b.table([
+              { text: item.name, align: 'left', width: 0.7 },
+              { text: item.price.toFixed(2), align: 'right', width: 0.3 },
             ]);
           }
-          p.drawLine();
-          p.tableCustom([
-            { text: 'TOTAL', align: 'LEFT', width: 0.7, bold: true },
-            { text: total.toFixed(2), align: 'RIGHT', width: 0.3, bold: true },
+          b.line();
+          b.table([
+            { text: 'TOTAL', align: 'left', width: 0.7, bold: true },
+            { text: total.toFixed(2), align: 'right', width: 0.3, bold: true },
           ]);
-          p.drawLine();
-          p.newLine();
-          p.cut();
+          b.line();
+          b.feed(2);
         }),
       );
 

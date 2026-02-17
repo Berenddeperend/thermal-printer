@@ -15,7 +15,7 @@ berendswennenhuis.nl/api/printer/*
                                               │
                                          print-server (Node + --experimental-strip-types)
                                               │
-                                         queue → node-thermal-printer → USB
+                                         queue → bitmap-font → star-raster → CUPS raw → USB
                                                  RPi Camera Module → CSI
 ```
 
@@ -33,8 +33,9 @@ berendswennenhuis.nl/api/printer/*
 ## Stack
 
 - **Runtime**: Node.js 22 LTS with `--experimental-strip-types` (TypeScript, no build step). Run 'nvm use' before running any node commands.
-- **Printer lib**: node-thermal-printer (PrinterTypes.STAR)
-- **Printer interface**: /dev/usb/lp0 (USB)
+- **Printer pipeline**: Pure JS, zero runtime deps. Text → `ReceiptBuilder` (bitmap font) → `encode()` (Star Graphic Mode raster) → `lp -d Star_TSP143 -o raw` (CUPS)
+- **Why not node-thermal-printer**: The TSP143IIU+ only supports Star Graphic Mode (raster). Star Line Mode commands (which node-thermal-printer emits) are silently ignored. The CUPS raster pipeline works but takes ~40s. Star Graphic Mode via raw `lp` prints instantly.
+- **Printer interface**: CUPS (`lp -d Star_TSP143 -o raw`) — the `usblp` kernel module is blacklisted; CUPS uses libusb directly via the Star CUPS driver
 - **Camera**: RPi Camera Module (v2 or v3) via CSI port, controlled via libcamera
 - **No framework preference specified** — keep dependencies minimal, native http is fine
 
@@ -42,16 +43,29 @@ berendswennenhuis.nl/api/printer/*
 
 - Routes/templates live on the server. Adding a new print format = adding a route, not touching calling services.
 - Print jobs must be serialized through a queue (one job at a time, FIFO). Concurrent POSTs must not interleave.
-- Clear printer buffer before each job to prevent state leaking from failed prints.
 - No auth by default (private network, proxied through Caddy). Bearer token middleware can be added later.
-- printImage paths resolve on the printer Pi, not the caller.
+
+## Print Pipeline
+
+```
+ReceiptBuilder (src/bitmap-font.ts)     — text/bold/table/line → 576px-wide 1-bit bitmap
+    ↓
+encode() (src/star-raster.ts)           — bitmap → Star Graphic Mode binary
+    ↓
+lp -d Star_TSP143 -o raw               — binary → CUPS → USB → printer
+```
+
+- **Bitmap font**: Embedded 8x16 CP437 font (4096 bytes). 72 chars/line at 1x, 36 chars/line at 2x.
+- **Star Graphic Mode protocol**: `ESC * r A` (enter raster) → scanlines → `ESC * r B` (exit) → `ESC d 3` (cut).
+- **ReceiptBuilder API**: `.text()`, `.bold()`, `.textLarge()`, `.boldLarge()`, `.line()`, `.table()`, `.feed()`, `.build()`
+- Routes call `printer.execute((b) => { b.text('...'); })` — the builder callback renders to bitmap, encodes, and sends.
 
 ## Dev/Deploy
 
 - **Dev on macOS, deploy to printer Pi running Raspberry Pi OS Lite (32-bit Bookworm)**
 - .nvmrc to use correct node version. Run `nvm use` before running node commands.
 - Printer is mocked in development: wrap printer in a service, switch on NODE_ENV. Mock logs method calls to console instead of printing.
-- Deploy script: SSH into printer Pi from mac (same LAN) → git pull → npm install (must run on Pi due to native deps from build-essential) → systemctl restart print-server
+- Deploy script: SSH into printer Pi from mac (same LAN) → git pull → npm install → systemctl restart print-server
 - systemd unit file manages the process (auto-start on boot, restart on crash)
 - No Docker — overkill for a single-purpose Pi2 project
 
@@ -65,10 +79,14 @@ These are examples. Routes are added as needed.
 
 ## Printer Pi Setup Notes
 
-- `sudo apt-get install build-essential` required for node-thermal-printer native deps
-- `sudo usermod -a -G lp $USER` for USB printer access
-- Verify printer: `lsusb` (Star Micronics), `ls /dev/usb/lp0`
-- Install Node.js 22 via NodeSource (armv7 builds available)
+- `sudo apt-get install cups libcups2-dev libusb-1.0-0-dev` for CUPS
+- `sudo usermod -aG lp,lpadmin $USER` for printer + CUPS admin access
+- Blacklist `usblp` kernel module: `echo "blacklist usblp" | sudo tee /etc/modprobe.d/blacklist-usblp.conf`
+- Star CUPS driver: build from source in `drivers/starcupsdrv/` (`sudo make && sudo make install`)
+- Register printer: `sudo lpadmin -p Star_TSP143 -E -v "usb://Star/Star%20TSP143IIU%2B" -m star/tsp143.ppd`
+- Verify: `lpstat -p Star_TSP143` (should show idle), `echo test | lp -d Star_TSP143 -o raw`
+- Verify USB: `lsusb` (Star Micronics)
+- Install Node.js 22 via nvm (armv7 builds available)
 
 ---
 

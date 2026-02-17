@@ -19,9 +19,10 @@ export function labelRoute(printer: Printer, queue: PrintQueue): Route {
       }
 
       await queue.enqueue(() =>
-        printer.execute((p) => {
-          p.println(text);
-          p.cut();
+        printer.execute((b) => {
+          b.feed(1);
+          b.bold(text, 'center');
+          b.feed(2);
         }),
       );
 
