@@ -9,7 +9,7 @@ Web services POST simple payloads to the print server. All print logic lives on 
 ```
 [Internet]
     │
-berendswennenhuis.nl/api/printer/*
+mywebsite.com/api/printer/*
     │
 [RPi4 server] ── Caddy reverse proxy ──→ [Printer Pi (RPi2) on LAN]
                                               │
@@ -27,7 +27,7 @@ berendswennenhuis.nl/api/printer/*
 ### Networking
 
 - The printer Pi is on the local LAN and has internet access.
-- The RPi4 server runs Caddy and reverse proxies `berendswennenhuis.nl/api/printer/*` to the printer Pi's local IP (e.g. `192.168.2.16:3000`).
+- The RPi4 server runs Caddy and reverse proxies `mywebsite.com/api/printer/*` to the printer Pi's local IP (e.g. `192.168.2.16:3000`).
 - Caddy on the RPi4 server handles TLS termination. The printer Pi only receives plain HTTP from the LAN.
 
 ## Stack
