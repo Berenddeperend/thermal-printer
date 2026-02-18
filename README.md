@@ -70,8 +70,10 @@ Binary endpoints (image, canvas) have curl scripts with sample images in `script
 ```
 ./scripts/test-image.sh ./scripts/berend.png
 ./scripts/test-image.sh ./scripts/pip.png
-./scripts/test-canvas.sh data.rgba 576 400
+./scripts/test-image.sh --dither ./scripts/pip.png 
 ```
+
+The canvas endpoint (`/api/printer/canvas`) accepts raw RGBA pixel data from `ctx.getImageData().data` — it's meant to be called from code, not from the command line.
 
 The default base URL is read from `PRINTER_PI` in your `.env`. Pass a second argument to override it.
 

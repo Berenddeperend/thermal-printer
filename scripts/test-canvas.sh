@@ -7,15 +7,20 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 [[ -f "$SCRIPT_DIR/../.env" ]] && source "$SCRIPT_DIR/../.env"
 
-FILE="${1:?Usage: $0 <file.rgba> <width> <height> [base_url] [--dither]}"
-WIDTH="${2:?Usage: $0 <file.rgba> <width> <height> [base_url] [--dither]}"
-HEIGHT="${3:?Usage: $0 <file.rgba> <width> <height> [base_url] [--dither]}"
-BASE_URL="${4:-http://${PRINTER_PI#*@}:3000}"
-
 DITHER=""
+POSITIONAL=()
 for arg in "$@"; do
-  [[ "$arg" == "--dither" ]] && DITHER="&dither=true"
+  if [[ "$arg" == "--dither" ]]; then
+    DITHER="&dither=true"
+  else
+    POSITIONAL+=("$arg")
+  fi
 done
+
+FILE="${POSITIONAL[0]:?Usage: $0 <file.rgba> <width> <height> [base_url] [--dither]}"
+WIDTH="${POSITIONAL[1]:?Usage: $0 <file.rgba> <width> <height> [base_url] [--dither]}"
+HEIGHT="${POSITIONAL[2]:?Usage: $0 <file.rgba> <width> <height> [base_url] [--dither]}"
+BASE_URL="${POSITIONAL[3]:-http://${PRINTER_PI#*@}:3000}"
 
 curl -X POST "$BASE_URL/api/printer/canvas?width=$WIDTH&height=$HEIGHT$DITHER" \
   -H 'Content-Type: application/octet-stream' \
