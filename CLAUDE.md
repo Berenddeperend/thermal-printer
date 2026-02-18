@@ -61,7 +61,7 @@ Image path:   rgbaToMono (src/image.ts)             → 576px 1-bit bitmap
 - **Bitmap font**: Embedded 8x16 CP437 font (4096 bytes). 72 chars/line at 1x, 36 chars/line at 2x.
 - **Star Graphic Mode protocol**: `ESC * r A` (enter raster) → scanlines → `ESC * r B` (exit) → `ESC d 3` (cut).
 - **ReceiptBuilder API**: `.textSmall()` / `.boldSmall()` (1x, 72 chars), `.text()` / `.bold()` (2x, 36 chars), `.textLarge()` / `.boldLarge()` (3x, 24 chars), `.line()`, `.table()`, `.feed()`, `.build()`
-- **Image conversion** (`src/image.ts`): `rgbaToMono()` scales RGBA to 576px wide (nearest-neighbor), converts to grayscale, thresholds at 128, packs to 1-bit.
+- **Image conversion** (`src/image.ts`): `rgbaToMono()` scales RGBA to 576px wide (nearest-neighbor), converts to grayscale, thresholds at 128 (or Floyd-Steinberg dithering via `{ dither: true }`), packs to 1-bit.
 - **Text routes** call `printer.execute((b) => { b.text('...'); })` — builder callback renders to bitmap, encodes, and sends.
 - **Image routes** call `printer.sendBitmap(data, height)` — sends pre-built 1-bit bitmap directly to the encoder.
 - **Known quirk**: w/x/y/z sit 1px lower than other lowercase letters. This is in the font data, not a rendering bug.
@@ -90,8 +90,8 @@ To swap it for a different 8x16 bitmap font:
 
 - `POST /api/printer/receipt` — JSON `{ items, total }`
 - `POST /api/printer/label` — JSON `{ text }`
-- `POST /api/printer/image` — raw PNG bytes (`Content-Type: image/png`)
-- `POST /api/printer/canvas` — raw RGBA bytes (`Content-Type: application/octet-stream`, `?width=N&height=N`)
+- `POST /api/printer/image` — raw PNG bytes (`Content-Type: image/png`). Optional `?dither=true` for Floyd-Steinberg dithering.
+- `POST /api/printer/canvas` — raw RGBA bytes (`Content-Type: application/octet-stream`, `?width=N&height=N`). Optional `&dither=true` for Floyd-Steinberg dithering.
 - `POST /api/printer/test` — no body, prints a sampler of all text styles
 - `GET /api/printer/health` — printer connection status + queue depth
 
@@ -101,8 +101,8 @@ The router returns parsed JSON for `application/json` requests, raw `Buffer` for
 
 - JSON endpoints (receipt, label): use Bruno (`bruno/`)
 - Binary endpoints (image, canvas): use curl scripts (`scripts/`)
-  - `./scripts/test-image.sh <file.png> [base_url]`
-  - `./scripts/test-canvas.sh <file.rgba> <width> <height> [base_url]`
+  - `./scripts/test-image.sh <file.png> [base_url] [--dither]`
+  - `./scripts/test-canvas.sh <file.rgba> <width> <height> [base_url] [--dither]`
   - Default base URL: `http://192.168.2.16:3000`
 
 ## Printer Pi Setup Notes
@@ -156,6 +156,10 @@ Responses are slower when capture is enabled — the endpoint blocks until print
 - Raspberry Pi OS Bookworm uses libcamera by default (not raspistill).
 - Test camera: `libcamera-still -o test.jpg`
 - Mount the camera so it has a clear view of where the paper exits the printer. Consider lighting — a small LED strip helps with consistent photo quality.
+
+## Workflow
+
+- When adding or changing endpoints/params, always update the corresponding test scripts (`scripts/`) and/or Bruno collection (`bruno/`) to reflect the change. Keep CLAUDE.md endpoint docs and testing section in sync too.
 
 ## Developer Profile
 
