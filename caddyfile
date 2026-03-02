@@ -1,0 +1,15 @@
+ mywebsite.com {
+     @printer path /api/printer/*
+
+     # Require bearer token for printer endpoints
+     @printer_unauthorized {
+         path /api/printer/*
+         not header Authorization "Bearer {env.PRINTER_TOKEN}"
+     }
+     respond @printer_unauthorized 401 {
+         body "Unauthorized"
+         close
+     }
+
+     reverse_proxy @printer 192.168.2.16:3000
+ }
