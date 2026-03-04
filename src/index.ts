@@ -10,6 +10,7 @@ import { imageRoute } from './routes/image.ts';
 import { canvasRoute } from './routes/canvas.ts';
 import { testRoute } from './routes/test.ts';
 import { todoRoute } from './routes/todo.ts';
+import { newspaperRoute } from './routes/newspaper.ts';
 
 const printer = createPrinter();
 const queue = new PrintQueue();
@@ -22,6 +23,7 @@ const handler = createRouter([
   canvasRoute(printer, queue),
   testRoute(printer, queue),
   todoRoute(printer, queue),
+  newspaperRoute(printer, queue),
 ]);
 
 const server = createServer(handler);

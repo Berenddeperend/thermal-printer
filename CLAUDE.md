@@ -86,6 +86,15 @@ To swap it for a different 8x16 bitmap font:
 - systemd unit file manages the process (auto-start on boot, restart on crash)
 - No Docker — overkill for a single-purpose Pi2 project
 
+### Environment Variables
+
+- `PORT` — server port (default `3000`)
+- `NODE_ENV` — `production` for real printer, anything else for mock
+- `CUPS_PRINTER` — CUPS printer name (default `Star_TSP143`)
+- `WEATHER_LAT` / `WEATHER_LON` — coordinates for weather forecast (default: Enschede, `52.22` / `6.89`)
+- `PAGEVIEWS_URL` — URL for weekly pageview stats endpoint (newspaper section skipped if empty)
+- `BIRDNET_URL` — URL for weekly BirdNET-Pi detection stats endpoint (newspaper section skipped if empty)
+
 ## Endpoints
 
 - `POST /api/printer/receipt` — JSON `{ items, total }`
@@ -93,6 +102,7 @@ To swap it for a different 8x16 bitmap font:
 - `POST /api/printer/image` — raw PNG bytes (`Content-Type: image/png`). Optional `?dither=true` for Floyd-Steinberg dithering.
 - `POST /api/printer/canvas` — raw RGBA bytes (`Content-Type: application/octet-stream`, `?width=N&height=N`). Optional `&dither=true` for Floyd-Steinberg dithering.
 - `POST /api/printer/todo` — JSON `{ items, title? }`. Prints a todo list with `[ ]` checkboxes. `items` is a string array. `title` defaults to today's date in Dutch (e.g. "Maandag 23 februari 2026"). Long items wrap with hanging indent.
+- `POST /api/printer/newspaper` — no body. Prints a weekly newspaper with weather forecast (Open-Meteo), minitafeltje.nl pageviews, BirdNET-Pi bird summary, and a sudoku puzzle. Sections are skipped gracefully if their data source is unavailable. Scheduled via systemd timer every Sunday 08:00, or triggered on-demand.
 - `POST /api/printer/test` — no body, prints a sampler of all text styles
 - `GET /api/printer/health` — printer connection status + queue depth
 
@@ -105,6 +115,7 @@ The router returns parsed JSON for `application/json` requests, raw `Buffer` for
   - `./scripts/test-image.sh <file.png> [base_url] [--dither]`
   - `./scripts/test-canvas.sh <file.rgba> <width> <height> [base_url] [--dither]`
   - Default base URL: `http://192.168.2.16:3000`
+- Newspaper: `./scripts/test-newspaper.sh [base_url]` or Bruno `bruno/newspaper.bru`
 
 ## Printer Pi Setup Notes
 
