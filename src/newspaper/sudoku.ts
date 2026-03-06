@@ -25,7 +25,7 @@ const CROSS = String.fromCharCode(197);    // ┼
 const DOT = String.fromCharCode(250);      // ·
 
 function formatRow(row: number[]): string {
-  const cells = row.map((v) => v === 0 ? DOT : String(v));
+  const cells = row.map((v) => v === 0 ? ' ' : String(v));
   const box1 = cells.slice(0, 3).join(' ');
   const box2 = cells.slice(3, 6).join(' ');
   const box3 = cells.slice(6, 9).join(' ');
@@ -39,15 +39,15 @@ function separatorLine(): string {
 
 export function renderSudoku(b: ReceiptBuilder, data: SudokuData): void {
   b.feed(1);
-  b.bold('Sudoku', 'center');
-  b.textSmall(data.difficulty, 'center');
+  b.bold(`Sudoku`, 'center');
+  b.text(`${data.difficulty} difficulty`, 'center');
   b.line();
   b.feed(1);
 
   for (let i = 0; i < 9; i++) {
     if (i === 3 || i === 6) {
-      b.textSmall(separatorLine(), 'center');
+      b.textLarge(separatorLine(), 'center');
     }
-    b.textSmall(formatRow(data.puzzle[i]), 'center');
+    b.textLarge(formatRow(data.puzzle[i]), 'center');
   }
 }

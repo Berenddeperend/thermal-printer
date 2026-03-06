@@ -48,8 +48,8 @@ export async function fetchNewspaperData(): Promise<NewspaperData> {
 }
 
 export function renderNewspaper(b: ReceiptBuilder, data: NewspaperData): void {
-  b.boldLarge('DE WEEKKRANT', 'center');
-  b.textSmall(dutchDate(), 'center');
+  b.boldLarge('Berend\'s weekkrant', 'center');
+  b.text(dutchDate(), 'center');
   b.line();
 
   if (data.weather) renderWeather(b, data.weather);
