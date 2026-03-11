@@ -13,9 +13,13 @@ post {
 body:json {
   {
     "items": [
-      "Buy groceries",
-      "A very long todo item that should wrap to multiple lines because it exceeds the available width",
-      "Call the dentist"
+      { "text": "Buy groceries" },
+      { "text": "A very long todo item that should wrap to multiple lines because it exceeds the available width" },
+      { "category": "Work", "items": [
+        { "text": "Finish report", "done": true },
+        { "text": "Email boss" }
+      ]},
+      { "text": "Call the dentist", "done": true }
     ]
   }
 }

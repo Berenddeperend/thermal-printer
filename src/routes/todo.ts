@@ -3,8 +3,10 @@ import { json } from '../router.ts';
 import type { Printer } from '../printer.ts';
 import type { PrintQueue } from '../queue.ts';
 
+type TodoItem = { text: string; done?: boolean } | { category: string; items: { text: string; done?: boolean }[] };
+
 type TodoBody = {
-  items: string[];
+  items: TodoItem[];
   title?: string;
 };
 
@@ -19,28 +21,28 @@ function dutchDate(): string {
   return `${DAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
 }
 
-const PREFIX = '[ ] ';
-const INDENT = '    ';
 const MAX_CHARS = 36; // 2x scale chars per line
 
-function wrapTodoItem(text: string): string[] {
-  const contentWidth = MAX_CHARS - PREFIX.length;
+function wrapTodoItem(text: string, done: boolean): string[] {
+  const prefix = done ? '[X] ' : '[ ] ';
+  const indent = '    ';
+  const contentWidth = MAX_CHARS - prefix.length;
   const lines: string[] = [];
   let remaining = text;
   let isFirst = true;
 
   while (remaining.length > 0) {
-    const prefix = isFirst ? PREFIX : INDENT;
+    const pfx = isFirst ? prefix : indent;
     const width = contentWidth;
 
     if (remaining.length <= width) {
-      lines.push(prefix + remaining);
+      lines.push(pfx + remaining);
       break;
     }
 
     let breakAt = remaining.lastIndexOf(' ', width);
     if (breakAt <= 0) breakAt = width;
-    lines.push(prefix + remaining.slice(0, breakAt));
+    lines.push(pfx + remaining.slice(0, breakAt));
     remaining = remaining.slice(breakAt).trimStart();
     isFirst = false;
   }
@@ -68,9 +70,18 @@ export function todoRoute(printer: Printer, queue: PrintQueue): Route {
           b.feed(1);
 
           for (const item of items) {
-            const lines = wrapTodoItem(item);
-            for (const line of lines) {
-              b.text(line);
+            if ('category' in item) {
+              b.feed(1);
+              b.boldSmall(item.category.toUpperCase());
+              for (const sub of item.items) {
+                for (const line of wrapTodoItem(sub.text, sub.done ?? false)) {
+                  b.text(line);
+                }
+              }
+            } else {
+              for (const line of wrapTodoItem(item.text, item.done ?? false)) {
+                b.text(line);
+              }
             }
           }
 
