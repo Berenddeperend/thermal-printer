@@ -31,20 +31,20 @@ function renderDomain(b: ReceiptBuilder, name: string, data: DomainData): void {
   b.feed(1);
   b.bold(name, 'center');
   b.line();
-  b.text(`Bezoekers: ${data.period.toLocaleString('nl-NL')}`);
+  b.text(`Pageviews: ${data.period.toLocaleString('nl-NL')}`);
   b.feed(1);
 
   const pages = Object.entries(data.pages)
     .map(([path, { period }]) => ({ path, views: period }))
     .sort((a, b) => b.views - a.views)
-    .slice(0, 10);
+    .slice(0, 20)
+    .filter(d => d.views > 0);
 
   if (pages.length) {
-    b.boldSmall('Top pagina\'s');
     for (const page of pages) {
       const views = String(page.views).padStart(5);
       const maxPath = 72 - 6; // 5 digits + space
-      b.textSmall(`${views} ${page.path.slice(0, maxPath)}`);
+      b.text(`${views} ${page.path.slice(0, maxPath)}`);
     }
   }
 }

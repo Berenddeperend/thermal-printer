@@ -10,7 +10,8 @@
       "Bash(ssh:*)",
       "WebFetch(domain:www.starmicronics.com)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(PAGEVIEWS_URL=https://berendswennenhuis.nl/api/pageviews node --experimental-strip-types -e \":*)"
     ]
   }
 }

@@ -11,6 +11,8 @@ Restart=always
 RestartSec=3
 Environment=NODE_ENV=production
 Environment=PORT=3000
+Environment=PAGEVIEWS_URL=https://berendswennenhuis.nl/api/pageviews
+Environment=BIRDNET_URL=http://192.168.2.17:3080/api/report
 
 [Install]
 WantedBy=multi-user.target
