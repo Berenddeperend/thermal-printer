@@ -2,7 +2,7 @@ import { config } from '../config.ts';
 import type { ReceiptBuilder } from '../bitmap-font.ts';
 
 type BirdnetApiResponse = {
-perce  summary: {
+  summary: {
     total_detections: number;
     unique_species: number;
     detections_change_pct: number | null;
