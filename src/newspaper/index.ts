@@ -21,6 +21,7 @@ function dutchDate(): string {
 
 type NewspaperData = {
   weather: WeatherData | null;
+  weatherError: string | null;
   pageviews: PageviewsData | null;
   birdnet: BirdnetData | null;
   sudoku: SudokuData | null;
@@ -41,6 +42,7 @@ export async function fetchNewspaperData(): Promise<NewspaperData> {
 
   return {
     weather: weather.status === 'fulfilled' ? weather.value : null,
+    weatherError: weather.status === 'rejected' ? String(weather.reason) : null,
     pageviews: pageviews.status === 'fulfilled' ? pageviews.value : null,
     birdnet: birdnet.status === 'fulfilled' ? birdnet.value : null,
     sudoku: sudoku.status === 'fulfilled' ? sudoku.value : null,
@@ -52,7 +54,14 @@ export function renderNewspaper(b: ReceiptBuilder, data: NewspaperData): void {
   b.text(dutchDate(), 'center');
   b.line();
 
-  if (data.weather) renderWeather(b, data.weather);
+  if (data.weather) {
+    renderWeather(b, data.weather);
+  } else if (data.weatherError) {
+    b.feed(1);
+    b.bold('Weer', 'center');
+    b.line();
+    b.textSmall(data.weatherError);
+  }
   if (data.pageviews) renderPageviews(b, data.pageviews);
   if (data.birdnet) renderBirdnet(b, data.birdnet);
   if (data.sudoku) renderSudoku(b, data.sudoku);

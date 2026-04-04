@@ -37,7 +37,7 @@ function renderDomain(b: ReceiptBuilder, name: string, data: DomainData): void {
   const pages = Object.entries(data.pages)
     .map(([path, { period }]) => ({ path, views: period }))
     .sort((a, b) => b.views - a.views)
-    .slice(0, 20)
+    .slice(0, 5)
     .filter(d => d.views > 0);
 
   if (pages.length) {
