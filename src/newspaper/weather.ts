@@ -50,21 +50,35 @@ export type WeatherData = {
   }>;
 };
 
-export async function fetchWeather(): Promise<WeatherData> {
+export async function fetchWeather(): Promise<WeatherData | null> {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${config.weatherLat}&longitude=${config.weatherLon}&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=Europe/Amsterdam&forecast_days=7`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-  if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
-  const json = await res.json() as { daily: DailyForecast };
-  const d = json.daily;
-
-  return {
-    days: d.time.map((t, i) => ({
-      date: new Date(t),
-      high: Math.round(d.temperature_2m_max[i]),
-      low: Math.round(d.temperature_2m_min[i]),
-      description: WMO_DESCRIPTIONS[d.weather_code[i]] || `Code ${d.weather_code[i]}`,
-    })),
-  };
+  const delays = [500, 1000, 2000];
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
+      const json = await res.json() as { daily: DailyForecast };
+      const d = json.daily;
+      return {
+        days: d.time.map((t, i) => ({
+          date: new Date(t),
+          high: Math.round(d.temperature_2m_max[i]),
+          low: Math.round(d.temperature_2m_min[i]),
+          description: WMO_DESCRIPTIONS[d.weather_code[i]] || `Code ${d.weather_code[i]}`,
+        })),
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (attempt < delays.length) {
+        console.error(`[weather] attempt ${attempt + 1} failed (${msg}), retrying in ${delays[attempt]}ms`);
+        await new Promise((r) => setTimeout(r, delays[attempt]));
+      } else {
+        console.error(`[weather] failed after ${delays.length + 1} attempts:`, msg);
+        return null;
+      }
+    }
+  }
+  return null;
 }
 
 export function renderWeather(b: ReceiptBuilder, data: WeatherData): void {
