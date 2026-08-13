@@ -8,17 +8,10 @@ const execFileAsync = promisify(execFile);
 
 const WIDTH_BYTES = 72;
 
-type PrintOptions = {
-  /** Cut the paper after this job. Defaults to true. Set false to chain
-   * another execute()/sendBitmap() call onto the same continuous strip
-   * (e.g. text followed by an image), cutting only after the last one. */
-  cut?: boolean;
-};
-
 export type Printer = {
   isConnected: () => Promise<boolean>;
-  execute: (fn: (b: ReceiptBuilder) => void, opts?: PrintOptions) => Promise<void>;
-  sendBitmap: (data: Uint8Array, height: number, opts?: PrintOptions) => Promise<void>;
+  execute: (fn: (b: ReceiptBuilder) => void) => Promise<void>;
+  sendBitmap: (data: Uint8Array, height: number) => Promise<void>;
 };
 
 function createCupsInterface(cupsName: string) {
@@ -49,15 +42,15 @@ function createRealPrinter(): Printer {
 
   return {
     isConnected: () => cups.isPrinterConnected(),
-    execute: async (fn, opts) => {
+    execute: async (fn) => {
       const builder = new ReceiptBuilder();
       fn(builder);
       const { data, height } = builder.build();
-      const raster = encode(data, WIDTH_BYTES, height, opts?.cut ?? true);
+      const raster = encode(data, WIDTH_BYTES, height);
       await cups.sendRaw(raster);
     },
-    sendBitmap: async (data, height, opts) => {
-      const raster = encode(data, WIDTH_BYTES, height, opts?.cut ?? true);
+    sendBitmap: async (data, height) => {
+      const raster = encode(data, WIDTH_BYTES, height);
       await cups.sendRaw(raster);
     },
   };
@@ -68,17 +61,17 @@ function createMockPrinter(): Printer {
 
   return {
     isConnected: async () => true,
-    execute: async (fn, opts) => {
+    execute: async (fn) => {
       log('--- job start ---');
       const builder = new ReceiptBuilder();
       fn(builder);
       const { width, height } = builder.build();
-      log(`rendered ${width}x${height} bitmap (cut=${opts?.cut ?? true})`);
+      log(`rendered ${width}x${height} bitmap`);
       log('--- job end ---');
     },
-    sendBitmap: async (data, height, opts) => {
+    sendBitmap: async (data, height) => {
       log('--- bitmap job start ---');
-      log(`sendBitmap ${data.length} bytes, 576x${height} (cut=${opts?.cut ?? true})`);
+      log(`sendBitmap ${data.length} bytes, 576x${height}`);
       log('--- bitmap job end ---');
     },
   };

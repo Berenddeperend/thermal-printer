@@ -4,6 +4,7 @@ import { json } from '../router.ts';
 import type { Printer } from '../printer.ts';
 import type { PrintQueue } from '../queue.ts';
 import { rgbaToMono } from '../image.ts';
+import { ReceiptBuilder } from '../bitmap-font.ts';
 
 const WIDTH_BYTES = 72; // 576px / 8 — matches the raster encoder and image pipeline
 const PAD_ROWS = 16; // blank rows appended after the image so the cutter doesn't slice through it
@@ -13,7 +14,6 @@ type ShippingLabelBody = {
   address: string;
   postalCode: string;
   city: string;
-  hasEngraving?: boolean;
   /** Base64-encoded PNG of the engraving design (data URI prefix optional). */
   engravingImage?: string;
 };
@@ -23,7 +23,7 @@ export function shippingLabelRoute(printer: Printer, queue: PrintQueue): Route {
     method: 'POST',
     path: '/api/printer/shipping-label',
     handler: async (_req, res, body) => {
-      const { name, address, postalCode, city, hasEngraving, engravingImage } =
+      const { name, address, postalCode, city, engravingImage } =
         (body as ShippingLabelBody) || {};
       if (!name || !address || !postalCode || !city) {
         json(res, 400, { error: 'Missing "name", "address", "postalCode" or "city" field' });
@@ -35,38 +35,46 @@ export function shippingLabelRoute(printer: Printer, queue: PrintQueue): Route {
         try {
           const base64 = engravingImage.replace(/^data:image\/png;base64,/, '');
           const png = PNG.sync.read(Buffer.from(base64, 'base64'));
-          bitmap = rgbaToMono(new Uint8Array(png.data), png.width, png.height);
+          bitmap = rgbaToMono(new Uint8Array(png.data), png.width, png.height, {
+            dither: true,
+          });
         } catch {
           json(res, 400, { error: 'Invalid "engravingImage" PNG data' });
           return;
         }
       }
 
-      await queue.enqueue(async () => {
-        await printer.execute(
-          (b) => {
-            b.feed(1);
-            b.line();
-            b.bold(name);
-            b.text(address);
-            b.text(`${postalCode} ${city}`);
-            b.feed(1);
-            b.boldSmall(hasEngraving ? 'GRAVERING: JA' : 'GRAVERING: NEE');
-            if (!bitmap) {
-              b.line();
-              b.feed(2);
-            }
-          },
-          { cut: !bitmap },
-        );
+      // Build the text block in memory (not via printer.execute) so it can be
+      // merged with the engraving image into a single raster job — printing
+      // them as separate jobs would cut the paper in between.
+      const builder = new ReceiptBuilder();
+      builder.feed(1);
+      builder.line();
+      builder.bold(name);
+      builder.text(address);
+      builder.text(`${postalCode} ${city}`);
+      builder.line();
+      builder.feed(bitmap ? 1 : 2);
+      const textBlock = builder.build();
 
-        if (bitmap) {
-          // Pad a bit of blank paper below the design before cutting.
-          const padded = new Uint8Array(bitmap.data.length + WIDTH_BYTES * PAD_ROWS);
-          padded.set(bitmap.data, 0);
-          await printer.sendBitmap(padded, bitmap.height + PAD_ROWS, { cut: true });
-        }
-      });
+      let combined = textBlock.data;
+      let combinedHeight = textBlock.height;
+
+      if (bitmap) {
+        // Pad a bit of blank paper below the design before cutting.
+        const padded = new Uint8Array(bitmap.data.length + WIDTH_BYTES * PAD_ROWS);
+        padded.set(bitmap.data, 0);
+        const paddedHeight = bitmap.height + PAD_ROWS;
+
+        const merged = new Uint8Array(textBlock.data.length + padded.length);
+        merged.set(textBlock.data, 0);
+        merged.set(padded, textBlock.data.length);
+
+        combined = merged;
+        combinedHeight = textBlock.height + paddedHeight;
+      }
+
+      await queue.enqueue(() => printer.sendBitmap(combined, combinedHeight));
 
       json(res, 200, { ok: true });
     },
