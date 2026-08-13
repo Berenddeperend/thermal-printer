@@ -1,0 +1,15 @@
+meta {
+  name: shipping-label-missing-fields
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/shipping-label
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {}
+}

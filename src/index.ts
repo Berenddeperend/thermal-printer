@@ -5,6 +5,7 @@ import { PrintQueue } from './queue.ts';
 import { createRouter } from './router.ts';
 import { healthRoute } from './routes/health.ts';
 import { labelRoute } from './routes/label.ts';
+import { shippingLabelRoute } from './routes/shipping-label.ts';
 import { receiptRoute } from './routes/receipt.ts';
 import { imageRoute } from './routes/image.ts';
 import { canvasRoute } from './routes/canvas.ts';
@@ -18,6 +19,7 @@ const queue = new PrintQueue();
 const handler = createRouter([
   healthRoute(printer, queue),
   labelRoute(printer, queue),
+  shippingLabelRoute(printer, queue),
   receiptRoute(printer, queue),
   imageRoute(printer, queue),
   canvasRoute(printer, queue),

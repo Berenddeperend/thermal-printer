@@ -53,6 +53,7 @@ This rsyncs the repo to the Pi, installs deps, and restarts the service. Don't e
 | Endpoint | Body | Description |
 |----------|------|-------------|
 | `POST /api/printer/label` | `{ "text": "..." }` | Print a centered label |
+| `POST /api/printer/shipping-label` | `{ "name": "...", "address": "...", "postalCode": "...", "city": "..." }` | Print a customer name + address block |
 | `POST /api/printer/receipt` | `{ "items": [...], "total": N }` | Print a receipt |
 | `POST /api/printer/image` | Raw PNG bytes | Print a PNG image |
 | `POST /api/printer/canvas` | Raw RGBA bytes (`?width=N&height=N`) | Print raw canvas pixel data |
@@ -63,7 +64,7 @@ This rsyncs the repo to the Pi, installs deps, and restarts the service. Don't e
 
 Run from your Mac — requests go to the Pi over the LAN.
 
-JSON endpoints (label, receipt) have Bruno collections in `bruno/`.
+JSON endpoints (label, shipping-label, receipt) have Bruno collections in `bruno/`.
 
 Binary endpoints (image, canvas) have curl scripts with sample images in `scripts/`:
 

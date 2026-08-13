@@ -1,0 +1,20 @@
+meta {
+  name: shipping-label
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/shipping-label
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "Berend Swennenhuis",
+    "address": "Voorbeeldstraat 1",
+    "postalCode": "1234 AB",
+    "city": "Enschede"
+  }
+}

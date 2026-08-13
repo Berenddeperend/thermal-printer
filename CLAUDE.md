@@ -99,6 +99,7 @@ To swap it for a different 8x16 bitmap font:
 
 - `POST /api/printer/receipt` — JSON `{ items, total }`
 - `POST /api/printer/label` — JSON `{ text }`
+- `POST /api/printer/shipping-label` — JSON `{ name, address, postalCode, city }`. Prints a customer name + address block (bold name, address, postal code + city) between two ruled lines — used by the chicknick webshop's orders admin page to print a physical shipping label on demand.
 - `POST /api/printer/image` — raw PNG bytes (`Content-Type: image/png`). Optional `?dither=true` for Floyd-Steinberg dithering.
 - `POST /api/printer/canvas` — raw RGBA bytes (`Content-Type: application/octet-stream`, `?width=N&height=N`). Optional `&dither=true` for Floyd-Steinberg dithering.
 - `POST /api/printer/todo` — JSON `{ items, title? }`. Prints a todo list with checkboxes. `items` is an array of `{ text, done? }` objects or `{ category, items }` groups. Done items print as `[X]`, pending as `[ ]`. Categories print as bold small-text headers. `title` defaults to today's date in Dutch (e.g. "Maandag 23 februari 2026"). Long items wrap with hanging indent.
@@ -110,7 +111,7 @@ The router returns parsed JSON for `application/json` requests, raw `Buffer` for
 
 ### Testing
 
-- JSON endpoints (receipt, label, todo): use Bruno (`bruno/`)
+- JSON endpoints (receipt, label, shipping-label, todo): use Bruno (`bruno/`)
 - Binary endpoints (image, canvas): use curl scripts (`scripts/`)
   - `./scripts/test-image.sh <file.png> [base_url] [--dither]`
   - `./scripts/test-canvas.sh <file.rgba> <width> <height> [base_url] [--dither]`
