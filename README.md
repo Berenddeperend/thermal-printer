@@ -53,7 +53,7 @@ This rsyncs the repo to the Pi, installs deps, and restarts the service. Don't e
 | Endpoint | Body | Description |
 |----------|------|-------------|
 | `POST /api/printer/label` | `{ "text": "..." }` | Print a centered label |
-| `POST /api/printer/shipping-label` | `{ "name": "...", "address": "...", "postalCode": "...", "city": "...", "engravingImage": "base64 PNG (optional)" }` | Print a customer name + address block, and (if given) the engraving design image |
+| `POST /api/printer/shipping-label` | `{ "name": "...", "address": "...", "postalCode": "...", "city": "...", "serialNumber": "003 (optional)", "engravingImage": "base64 PNG (optional)" }` | Print a customer name + address block (with serial number as a header, if given), and (if given) the engraving design image |
 | `POST /api/printer/receipt` | `{ "items": [...], "total": N }` | Print a receipt |
 | `POST /api/printer/image` | Raw PNG bytes | Print a PNG image |
 | `POST /api/printer/canvas` | Raw RGBA bytes (`?width=N&height=N`) | Print raw canvas pixel data |

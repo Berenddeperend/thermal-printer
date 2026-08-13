@@ -14,6 +14,8 @@ type ShippingLabelBody = {
   address: string;
   postalCode: string;
   city: string;
+  /** Workshop serial number, e.g. "003". Free-form, printed as-is if given. */
+  serialNumber?: string;
   /** Base64-encoded PNG of the engraving design (data URI prefix optional). */
   engravingImage?: string;
 };
@@ -23,7 +25,7 @@ export function shippingLabelRoute(printer: Printer, queue: PrintQueue): Route {
     method: 'POST',
     path: '/api/printer/shipping-label',
     handler: async (_req, res, body) => {
-      const { name, address, postalCode, city, engravingImage } =
+      const { name, address, postalCode, city, serialNumber, engravingImage } =
         (body as ShippingLabelBody) || {};
       if (!name || !address || !postalCode || !city) {
         json(res, 400, { error: 'Missing "name", "address", "postalCode" or "city" field' });
@@ -50,6 +52,9 @@ export function shippingLabelRoute(printer: Printer, queue: PrintQueue): Route {
       const builder = new ReceiptBuilder();
       builder.feed(1);
       builder.line();
+      if (serialNumber) {
+        builder.boldLarge(serialNumber, 'center');
+      }
       builder.bold(name);
       builder.text(address);
       builder.text(`${postalCode} ${city}`);
