@@ -99,7 +99,7 @@ To swap it for a different 8x16 bitmap font:
 
 - `POST /api/printer/receipt` — JSON `{ items, total }`
 - `POST /api/printer/label` — JSON `{ text }`
-- `POST /api/printer/shipping-label` — JSON `{ name, address, postalCode, city }`. Prints a customer name + address block (bold name, address, postal code + city) between two ruled lines — used by the chicknick webshop's orders admin page to print a physical shipping label on demand.
+- `POST /api/printer/shipping-label` — JSON `{ name, address, postalCode, city, hasEngraving?, engravingImage? }`. Prints a customer name + address block, then a bold "GRAVERING: JA/NEE" line. If `engravingImage` (base64 PNG, data URI prefix optional) is provided, it's converted via `rgbaToMono` and printed below on the same continuous strip (one cut at the end, via the `execute`/`sendBitmap` `{ cut }` option) — used by the chicknick webshop's orders admin page to print a physical shipping label + engraving preview on demand.
 - `POST /api/printer/image` — raw PNG bytes (`Content-Type: image/png`). Optional `?dither=true` for Floyd-Steinberg dithering.
 - `POST /api/printer/canvas` — raw RGBA bytes (`Content-Type: application/octet-stream`, `?width=N&height=N`). Optional `&dither=true` for Floyd-Steinberg dithering.
 - `POST /api/printer/todo` — JSON `{ items, title? }`. Prints a todo list with checkboxes. `items` is an array of `{ text, done? }` objects or `{ category, items }` groups. Done items print as `[X]`, pending as `[ ]`. Categories print as bold small-text headers. `title` defaults to today's date in Dutch (e.g. "Maandag 23 februari 2026"). Long items wrap with hanging indent.
