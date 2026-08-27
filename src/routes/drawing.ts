@@ -13,7 +13,7 @@ type DrawingBody = {
 
 export function drawingRoute(printer: Printer, queue: PrintQueue): Route {
   return {
-    method: 'POST',
+    method: 'POST'
     path: '/api/printer/drawing',
     handler: async (_req, res, body) => {
       if (typeof body !== 'object' || body === null || body instanceof Buffer) {
@@ -38,8 +38,9 @@ export function drawingRoute(printer: Printer, queue: PrintQueue): Route {
       let png: PNG;
       try {
         png = PNG.sync.read(Buffer.from(drawing, 'base64'));
-      } catch {
-        json(res, 400, { error: 'Invalid PNG data' });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        json(res, 400, { error: `Invalid PNG data: ${message}` });
         return;
       }
       if (png.width !== 576 || png.height !== 700) {
