@@ -104,6 +104,7 @@ To swap it for a different 8x16 bitmap font:
 - `POST /api/printer/canvas` — raw RGBA bytes (`Content-Type: application/octet-stream`, `?width=N&height=N`). Optional `&dither=true` for Floyd-Steinberg dithering.
 - `POST /api/printer/todo` — JSON `{ items, title? }`. Prints a todo list with checkboxes. `items` is an array of `{ text, done? }` objects or `{ category, items }` groups. Done items print as `[X]`, pending as `[ ]`. Categories print as bold small-text headers. `title` defaults to today's date in Dutch (e.g. "Maandag 23 februari 2026"). Long items wrap with hanging indent.
 - `POST /api/printer/newspaper` — no body. Prints a weekly newspaper with weather forecast (Open-Meteo), minitafeltje.nl pageviews, BirdNET-Pi bird summary, and a sudoku puzzle. Sections are skipped gracefully if their data source is unavailable. Scheduled via systemd timer every Sunday 08:00, or triggered on-demand.
+- `POST /api/printer/drawing` — JSON `{ author?, date, drawing }`. `drawing` is a base64-encoded PNG; must be **exactly 576x700**, else 400. `author` defaults to `"anoniem"`. `date` is printed as-is (caller pre-formats). Renders centered author + date header, separator line, then the image below.
 - `POST /api/printer/test` — no body, prints a sampler of all text styles
 - `GET /api/printer/health` — printer connection status + queue depth
 
@@ -112,9 +113,10 @@ The router returns parsed JSON for `application/json` requests, raw `Buffer` for
 ### Testing
 
 - JSON endpoints (receipt, label, shipping-label, todo): use Bruno (`bruno/`)
-- Binary endpoints (image, canvas): use curl scripts (`scripts/`)
+- Binary endpoints (image, canvas) and drawing (base64 PNG inside JSON): use curl scripts (`scripts/`)
   - `./scripts/test-image.sh <file.png> [base_url] [--dither]`
   - `./scripts/test-canvas.sh <file.rgba> <width> <height> [base_url] [--dither]`
+  - `./scripts/test-drawing.sh <file.png> <date> [author] [base_url]`
   - Default base URL: `http://192.168.2.16:3000`
 - Newspaper: `./scripts/test-newspaper.sh [base_url]` or Bruno `bruno/newspaper.bru`
 

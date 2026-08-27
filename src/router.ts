@@ -53,7 +53,8 @@ export function createRouter(routes: Route[]): (req: IncomingMessage, res: Serve
       await route.handler(req, res, body);
     } catch (err) {
       console.error('Route error:', err);
-      json(res, 500, { error: 'Internal server error' });
+      const message = err instanceof Error ? err.message : String(err);
+      json(res, 500, { error: message });
     }
   };
 }

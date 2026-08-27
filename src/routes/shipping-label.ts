@@ -51,10 +51,10 @@ export function shippingLabelRoute(printer: Printer, queue: PrintQueue): Route {
       // them as separate jobs would cut the paper in between.
       const builder = new ReceiptBuilder();
       builder.feed(1);
-      builder.line();
       if (serialNumber) {
-        builder.boldLarge(serialNumber, 'center');
+        builder.textLarge(serialNumber, 'center');
       }
+      builder.line();
       builder.bold(name);
       builder.text(address);
       builder.text(`${postalCode} ${city}`);

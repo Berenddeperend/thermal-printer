@@ -122,6 +122,15 @@ export class ReceiptBuilder {
     return this;
   }
 
+  /** Append a precomputed 1-bit packed bitmap (576px wide, 72 bytes/row). */
+  bitmap(data: Uint8Array, height: number): this {
+    if (data.length !== WIDTH_BYTES * height) {
+      throw new Error(`bitmap data length ${data.length} does not match ${WIDTH_BYTES}*${height}`);
+    }
+    this.rows.push(data);
+    return this;
+  }
+
   /** Build final 1-bit packed bitmap */
   build(): { data: Uint8Array; width: number; height: number } {
     const totalBytes = this.rows.reduce((sum, r) => sum + r.length, 0);
