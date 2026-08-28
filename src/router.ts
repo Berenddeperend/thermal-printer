@@ -8,6 +8,7 @@ export type RouteHandler = (
 
 export type Route = {
   method: string;
+  /** Exact path, or a path ending in `/*` to prefix-match everything after it. */
   path: string;
   handler: RouteHandler;
 };
@@ -42,7 +43,9 @@ export function createRouter(routes: Route[]): (req: IncomingMessage, res: Serve
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     const path = url.pathname;
 
-    const route = routes.find((r) => r.method === method && r.path === path);
+    const route =
+      routes.find((r) => r.method === method && r.path === path) ??
+      routes.find((r) => r.method === method && r.path.endsWith('/*') && path.startsWith(r.path.slice(0, -1)));
     if (!route) {
       json(res, 404, { error: 'Not found' });
       return;

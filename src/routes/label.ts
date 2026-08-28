@@ -2,12 +2,13 @@ import type { Route } from '../router.ts';
 import { json } from '../router.ts';
 import type { Printer } from '../printer.ts';
 import type { PrintQueue } from '../queue.ts';
+import type { Capturer } from '../video.ts';
 
 type LabelBody = {
   text: string;
 };
 
-export function labelRoute(printer: Printer, queue: PrintQueue): Route {
+export function labelRoute(printer: Printer, queue: PrintQueue, capturer: Capturer): Route {
   return {
     method: 'POST',
     path: '/api/printer/label',
@@ -18,15 +19,17 @@ export function labelRoute(printer: Printer, queue: PrintQueue): Route {
         return;
       }
 
-      await queue.enqueue(() =>
-        printer.execute((b) => {
-          b.feed(1);
-          b.bold(text, 'center');
-          b.feed(2);
-        }),
+      const { video } = await capturer.captureAndPrint(() =>
+        queue.enqueue(() =>
+          printer.execute((b) => {
+            b.feed(1);
+            b.bold(text, 'center');
+            b.feed(2);
+          }),
+        ),
       );
 
-      json(res, 200, { ok: true });
+      json(res, 200, { ok: true, video });
     },
   };
 }

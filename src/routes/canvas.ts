@@ -3,6 +3,7 @@ import type { Route } from '../router.ts';
 import { json } from '../router.ts';
 import type { Printer } from '../printer.ts';
 import type { PrintQueue } from '../queue.ts';
+import type { Capturer } from '../video.ts';
 import { rgbaToMono } from '../image.ts';
 
 function getQueryParam(req: IncomingMessage, name: string): string | null {
@@ -10,7 +11,7 @@ function getQueryParam(req: IncomingMessage, name: string): string | null {
   return url.searchParams.get(name);
 }
 
-export function canvasRoute(printer: Printer, queue: PrintQueue): Route {
+export function canvasRoute(printer: Printer, queue: PrintQueue, capturer: Capturer): Route {
   return {
     method: 'POST',
     path: '/api/printer/canvas',
@@ -46,9 +47,11 @@ export function canvasRoute(printer: Printer, queue: PrintQueue): Route {
       const rgba = new Uint8Array(body);
       const mono = rgbaToMono(rgba, width, height, { dither });
 
-      await queue.enqueue(() => printer.sendBitmap(mono.data, mono.height));
+      const { video } = await capturer.captureAndPrint(() =>
+        queue.enqueue(() => printer.sendBitmap(mono.data, mono.height)),
+      );
 
-      json(res, 200, { ok: true });
+      json(res, 200, { ok: true, video });
     },
   };
 }

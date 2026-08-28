@@ -3,6 +3,7 @@ import type { Route } from '../router.ts';
 import { json } from '../router.ts';
 import type { Printer } from '../printer.ts';
 import type { PrintQueue } from '../queue.ts';
+import type { Capturer } from '../video.ts';
 import { rgbaToMono } from '../image.ts';
 import { ReceiptBuilder } from '../bitmap-font.ts';
 
@@ -20,7 +21,7 @@ type ShippingLabelBody = {
   engravingImage?: string;
 };
 
-export function shippingLabelRoute(printer: Printer, queue: PrintQueue): Route {
+export function shippingLabelRoute(printer: Printer, queue: PrintQueue, capturer: Capturer): Route {
   return {
     method: 'POST',
     path: '/api/printer/shipping-label',
@@ -79,9 +80,11 @@ export function shippingLabelRoute(printer: Printer, queue: PrintQueue): Route {
         combinedHeight = textBlock.height + paddedHeight;
       }
 
-      await queue.enqueue(() => printer.sendBitmap(combined, combinedHeight));
+      const { video } = await capturer.captureAndPrint(() =>
+        queue.enqueue(() => printer.sendBitmap(combined, combinedHeight)),
+      );
 
-      json(res, 200, { ok: true });
+      json(res, 200, { ok: true, video });
     },
   };
 }

@@ -4,9 +4,10 @@ import type { Route } from '../router.ts';
 import { json } from '../router.ts';
 import type { Printer } from '../printer.ts';
 import type { PrintQueue } from '../queue.ts';
+import type { Capturer } from '../video.ts';
 import { rgbaToMono } from '../image.ts';
 
-export function imageRoute(printer: Printer, queue: PrintQueue): Route {
+export function imageRoute(printer: Printer, queue: PrintQueue, capturer: Capturer): Route {
   return {
     method: 'POST',
     path: '/api/printer/image',
@@ -28,9 +29,11 @@ export function imageRoute(printer: Printer, queue: PrintQueue): Route {
       const rgba = new Uint8Array(png.data);
       const { data, height } = rgbaToMono(rgba, png.width, png.height, { dither });
 
-      await queue.enqueue(() => printer.sendBitmap(data, height));
+      const { video } = await capturer.captureAndPrint(() =>
+        queue.enqueue(() => printer.sendBitmap(data, height)),
+      );
 
-      json(res, 200, { ok: true });
+      json(res, 200, { ok: true, video });
     },
   };
 }

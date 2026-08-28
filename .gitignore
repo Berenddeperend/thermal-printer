@@ -4,4 +4,5 @@ dist/
 .env
 .idea
 bruno/environments/production.bru
+data/
 

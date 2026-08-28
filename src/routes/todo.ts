@@ -2,6 +2,7 @@ import type { Route } from '../router.ts';
 import { json } from '../router.ts';
 import type { Printer } from '../printer.ts';
 import type { PrintQueue } from '../queue.ts';
+import type { Capturer } from '../video.ts';
 
 type TodoItem = { text: string; done?: boolean } | { category: string; items: { text: string; done?: boolean }[] };
 
@@ -50,7 +51,7 @@ function wrapTodoItem(text: string, done: boolean): string[] {
   return lines;
 }
 
-export function todoRoute(printer: Printer, queue: PrintQueue): Route {
+export function todoRoute(printer: Printer, queue: PrintQueue, capturer: Capturer): Route {
   return {
     method: 'POST',
     path: '/api/printer/todo',
@@ -63,33 +64,35 @@ export function todoRoute(printer: Printer, queue: PrintQueue): Route {
 
       const header = title || dutchDate();
 
-      await queue.enqueue(() =>
-        printer.execute((b) => {
-          b.bold(header, 'center');
-          b.line();
-          b.feed(1);
+      const { video } = await capturer.captureAndPrint(() =>
+        queue.enqueue(() =>
+          printer.execute((b) => {
+            b.bold(header, 'center');
+            b.line();
+            b.feed(1);
 
-          for (const item of items) {
-            if ('category' in item) {
-              b.feed(1);
-              b.boldSmall(item.category.toUpperCase());
-              for (const sub of item.items) {
-                for (const line of wrapTodoItem(sub.text, sub.done ?? false)) {
+            for (const item of items) {
+              if ('category' in item) {
+                b.feed(1);
+                b.boldSmall(item.category.toUpperCase());
+                for (const sub of item.items) {
+                  for (const line of wrapTodoItem(sub.text, sub.done ?? false)) {
+                    b.text(line);
+                  }
+                }
+              } else {
+                for (const line of wrapTodoItem(item.text, item.done ?? false)) {
                   b.text(line);
                 }
               }
-            } else {
-              for (const line of wrapTodoItem(item.text, item.done ?? false)) {
-                b.text(line);
-              }
             }
-          }
 
-          b.feed(2);
-        }),
+            b.feed(2);
+          }),
+        ),
       );
 
-      json(res, 200, { ok: true });
+      json(res, 200, { ok: true, video });
     },
   };
 }

@@ -3,6 +3,7 @@ import type { Route } from '../router.ts';
 import { json } from '../router.ts';
 import type { Printer } from '../printer.ts';
 import type { PrintQueue } from '../queue.ts';
+import type { Capturer } from '../video.ts';
 import { rgbaToMono } from '../image.ts';
 
 type DrawingBody = {
@@ -11,7 +12,7 @@ type DrawingBody = {
   drawing?: unknown;
 };
 
-export function drawingRoute(printer: Printer, queue: PrintQueue): Route {
+export function drawingRoute(printer: Printer, queue: PrintQueue, capturer: Capturer): Route {
   return {
     method: 'POST',
     path: '/api/printer/drawing',
@@ -51,18 +52,20 @@ export function drawingRoute(printer: Printer, queue: PrintQueue): Route {
       const rgba = new Uint8Array(png.data);
       const { data, height } = rgbaToMono(rgba, png.width, png.height);
 
-      await queue.enqueue(() =>
-        printer.execute((b) => {
-          b.boldLarge(displayAuthor, 'center');
-          b.text(date, 'center');
-          b.line();
-          b.feed(1);
-          b.bitmap(data, height);
-          b.feed(3);
-        }),
+      const { video } = await capturer.captureAndPrint(() =>
+        queue.enqueue(() =>
+          printer.execute((b) => {
+            b.boldLarge(displayAuthor, 'center');
+            b.text(date, 'center');
+            b.line();
+            b.feed(1);
+            b.bitmap(data, height);
+            b.feed(3);
+          }),
+        ),
       );
 
-      json(res, 200, { ok: true });
+      json(res, 200, { ok: true, video });
     },
   };
 }

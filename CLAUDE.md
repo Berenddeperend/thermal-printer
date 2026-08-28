@@ -36,7 +36,7 @@ mywebsite.com/api/printer/*
 - **Printer pipeline**: Pure JS, one runtime dep (`pngjs`). Text/images → 1-bit bitmap → `encode()` (Star Graphic Mode raster) → `lp -d Star_TSP143 -o raw` (CUPS)
 - **Why not node-thermal-printer**: The TSP143IIU+ only supports Star Graphic Mode (raster). Star Line Mode commands (which node-thermal-printer emits) are silently ignored. The CUPS raster pipeline works but takes ~40s. Star Graphic Mode via raw `lp` prints instantly.
 - **Printer interface**: CUPS (`lp -d Star_TSP143 -o raw`) — the `usblp` kernel module is blacklisted; CUPS uses libusb directly via the Star CUPS driver
-- **Camera**: RPi Camera Module (v2 or v3) via CSI port, controlled via libcamera
+- **Camera**: RPi Camera Module (v2 or v3) via CSI port, controlled via `rpicam-apps` (built on libcamera)
 - **No framework preference specified** — keep dependencies minimal, native http is fine
 
 ## Key Design Decisions
@@ -94,6 +94,10 @@ To swap it for a different 8x16 bitmap font:
 - `WEATHER_LAT` / `WEATHER_LON` — coordinates for weather forecast (default: Enschede, `52.22` / `6.89`)
 - `PAGEVIEWS_URL` — URL for weekly pageview stats endpoint (newspaper section skipped if empty)
 - `BIRDNET_URL` — URL for weekly BirdNET-Pi detection stats endpoint (newspaper section skipped if empty)
+- `VIDEO_DIR` — directory for captured verification videos (default `data/videos`, relative to the working directory)
+- `VIDEO_PREROLL_MS` — how long the camera records before the print job is sent (default `1500`)
+- `VIDEO_ACTIVE_MS` — how long the camera keeps recording after the print job is sent (default `1000`)
+- `VIDEO_TTL_MS` — how long a video is kept before being swept (default `3600000`, 1 hour)
 
 ## Endpoints
 
@@ -107,8 +111,11 @@ To swap it for a different 8x16 bitmap font:
 - `POST /api/printer/drawing` — JSON `{ author?, date, drawing }`. `drawing` is a base64-encoded PNG; must be **exactly 576x700**, else 400. `author` defaults to `"anoniem"`. `date` is printed as-is (caller pre-formats). Renders centered author + date header, separator line, then the image below.
 - `POST /api/printer/test` — no body, prints a sampler of all text styles
 - `GET /api/printer/health` — printer connection status + queue depth
+- `GET /api/printer/video/:id.mp4` — serves a captured print-verification video. 404 if not yet written or expired (see "Print Verification Camera" below).
 
 The router returns parsed JSON for `application/json` requests, raw `Buffer` for everything else. Routes type-check what they receive.
+
+Every endpoint above except `health` also captures a short verification video and adds its URL to the response: `{ ok: true, video: "/api/printer/video/<id>.mp4" }`.
 
 ### Testing
 
@@ -119,6 +126,7 @@ The router returns parsed JSON for `application/json` requests, raw `Buffer` for
   - `./scripts/test-drawing.sh <file.png> <date> [author] [base_url]`
   - Default base URL: `http://192.168.2.16:3000`
 - Newspaper: `./scripts/test-newspaper.sh [base_url]` or Bruno `bruno/newspaper.bru`
+- Verification video: `./scripts/test-video.sh [text] [base_url]` prints a label and polls the returned `video` URL until it's ready
 
 ## Printer Pi Setup Notes
 
@@ -130,47 +138,43 @@ The router returns parsed JSON for `application/json` requests, raw `Buffer` for
 - Verify: `lpstat -p Star_TSP143` (should show idle), `echo test | lp -d Star_TSP143 -o raw`
 - Verify USB: `lsusb` (Star Micronics)
 - Install Node.js 22 via nvm (armv7 builds available)
+- `sudo apt-get install ffmpeg` for muxing captured verification videos to `.mp4` (see "Print Verification Camera" below)
 
 ---
 
-## v1.1 — Print Verification Camera
+## Print Verification Camera
 
-A camera mounted above/beside the printer captures a photo of each print. The photo is returned directly in the HTTP response.
+A camera mounted above/beside the printer records a short clip of each print. The clip is saved to disk and its URL is added to the print endpoint's JSON response — the response is never blocked waiting for it.
 
 ### How it works
 
 1. Service POSTs to a print endpoint.
-2. Print job executes (paper feeds out).
-3. Brief delay to allow paper to settle (configurable, ~1-2s).
-4. Camera captures a still via `libcamera-still` (spawned as child process).
-5. The JPEG bytes are returned as the HTTP response body with `Content-Type: image/jpeg`.
+2. Server generates a random ID and starts the camera recording immediately (`rpicam-vid`), *before* the print job is sent — this catches the paper actually feeding out, not just the aftermath.
+3. After a pre-roll delay (`VIDEO_PREROLL_MS`, tunable — the right value depends on real camera-init latency, measured on hardware), the print job is sent.
+4. The camera keeps recording for `VIDEO_ACTIVE_MS` more, then stops. Total recording length is `VIDEO_PREROLL_MS + VIDEO_ACTIVE_MS`.
+5. The HTTP response returns as soon as the print job completes — `{ ok: true, video: "/api/printer/video/<id>.mp4" }` — well before the video file exists.
+6. In the background, the raw `.h264` capture is muxed to `.mp4` via `ffmpeg` (`-c copy`, fast lossless remux, no re-encode) and saved under `VIDEO_DIR`. Once that finishes, `GET /api/printer/video/<id>.mp4` starts returning `200`; until then (or if capture/mux fails) it 404s.
+7. Videos older than `VIDEO_TTL_MS` (default 1 hour) are deleted by an in-process sweep that runs every 5 minutes.
 
-No images are saved on the printer Pi. No cleanup needed. No URLs to manage. The caller receives raw JPEG bytes and decides what to do with them (save, display, discard).
+This supersedes the original v1.1 sketch of this feature, which returned a JPEG still inline in the response (`X-Capture` header, no file ever saved). That approach is not implemented — this save-to-disk, poll-the-URL design is what's built.
 
 ### Technical approach
 
-- Use `child_process.execFile` to call `libcamera-still` with flags for output to stdout (`-o -`), so the image is captured directly into a Node buffer without writing to disk.
-- Camera settings (resolution, quality, rotation) configured via libcamera CLI flags.
-- Lower resolution is fine (e.g. 1280x720 or even 640x480) — this is verification, not archival. Keeps response size small.
-- The photo capture is part of the queued job, so it's serialized with prints — no race conditions between capture and the next print job.
-
-### Response behavior
-
-- By default, print endpoints return JSON `{ ok: true }` (v1.0 behavior).
-- If the caller wants a photo, it sends a header like `X-Capture: true` or a query param `?capture=true`.
-- When capture is requested, the response is `Content-Type: image/jpeg` instead of JSON.
-- This keeps v1.0 behavior intact for services that don't care about verification.
-
-### Tradeoff
-
-Responses are slower when capture is enabled — the endpoint blocks until print + settle delay + photo capture completes. This is inherent to the feature. If fire-and-forget + async photo delivery is needed later, that's v1.2 territory (job ID + webhook/polling).
+- `child_process.execFile` (same idiom as `lp` in `src/printer.ts`) calls `rpicam-vid` — **not** `libcamera-vid`/`libcamera-still`, those binary names don't exist on current Raspberry Pi OS (Bookworm/trixie renamed `libcamera-apps` to `rpicam-apps`).
+- Recording resolution/bitrate/framerate (400x300, 15fps, ~500kbps) are hardcoded constants in `src/video.ts`, not env vars — they're hardware-tuning knobs set once during bring-up, unlike the pre-roll timing.
+- Capture + mux run fully detached from the request (`src/video.ts`'s `Capturer.captureAndPrint`) — failures are logged and clean up their own partial files, never surfacing to the HTTP caller.
+- Camera captures are serialized against each other through their own `PrintQueue` instance, separate from the print queue (the camera is a separate device from the printer's USB port) — but this capture queue is never awaited before a response returns, so one request's capture backlog can't stall another request's print.
+- **Known contention risk**: `go2rtc` (a separate systemd service on the printer Pi) also uses `rpicam-vid` on-demand for live streaming. If someone is actively viewing that stream at the exact moment a print fires, the verification capture can fail to acquire the camera (single-consumer device). This is accepted as a rare, low-stakes edge case — a failed capture just means that print's video 404s; it doesn't affect printing itself.
+- Development uses a mock capturer (mirrors `createMockPrinter()` in `src/printer.ts`) — same timing contract, but only logs, no real camera/ffmpeg calls, no file written.
 
 ### Setup notes
 
 - RPi2 has a standard 15-pin CSI port. Camera Module v2 or v3 works.
-- Raspberry Pi OS Bookworm uses libcamera by default (not raspistill).
-- Test camera: `libcamera-still -o test.jpg`
-- Mount the camera so it has a clear view of where the paper exits the printer. Consider lighting — a small LED strip helps with consistent photo quality.
+- Raspberry Pi OS Bookworm/trixie uses `rpicam-apps` by default (not `libcamera-apps`, not `raspistill`).
+- Test camera: `rpicam-hello --list-cameras`, `rpicam-vid -t 1000 -o test.h264`.
+- `ffmpeg` must be installed (`sudo apt-get install ffmpeg`) for the raw-`.h264`-to-`.mp4` mux step.
+- Mount the camera so it has a clear view of where the paper exits the printer. Consider lighting — a small LED strip helps with consistent video quality.
+- `VIDEO_PREROLL_MS` needs tuning on real hardware once footage is reviewed — if the clip misses the start of the paper feed, increase it.
 
 ## Workflow
 
